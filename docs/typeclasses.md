@@ -17,8 +17,8 @@ def unionSets[A](list: List[Set[A]]): Set[A] = list.foldRight(Set.empty[A])(_ un
 ```
 
 All of these follow the same pattern: an initial value (0, empty string, empty set) and a combining function
-(`+`, `++`, `union`). We'd like to abstract over this so we can write the function once instead of once for every type
-so we pull out the necessary pieces into an interface.
+(`+`, `++`, `union`). We'd like to abstract over this so that we can write the function once 
+instead of once for every type. Thus we pull out the necessary pieces into an interface:
 
 ```scala mdoc:silent
 trait Monoid[A] {
@@ -34,11 +34,30 @@ val intAdditionMonoid: Monoid[Int] = new Monoid[Int] {
 ```
 
 The name `Monoid` is taken from abstract algebra which specifies precisely this kind of structure.
-
-We can now write the functions above against this interface.
+The functions introduced above (e.g. `sumInts`) all use the following structure:
 
 ```scala mdoc:silent
 def combineAll[A](list: List[A], m: Monoid[A]): A = list.foldRight(m.empty)(m.combine)
+```
+
+We can now write the functions above against this interface. For instance, consider `sumInts`, which 
+previously was used as follows:
+
+```scala mdoc:silent
+val ints = List(1,2,3)
+def sumInts(list: List[Int]): Int = list.foldRight(0)(_ + _)
+sumInts(ints)
+```
+
+Using `Monoid`, we would write:
+
+```scala mdoc:silent
+val intAdditionMonoid: Monoid[Int] = new Monoid[Int] {
+  def empty: Int = 0
+  def combine(x: Int, y: Int): Int = x + y
+}
+
+combineAll(ints, intAdditionMonoid)
 ```
 
 ## Type classes vs. subtyping
@@ -76,7 +95,7 @@ final case class Pair[A <: Monoid[A], B <: Monoid[B]](first: A, second: B) exten
 }
 ```
 
-Not only is the type signature of `Pair` now messy but it also forces all instances of `Pair` to have a `Monoid`
+Not only is the type signature of `Pair` now messy, but it also forces all instances of `Pair` to have a `Monoid`
 instance, whereas `Pair` should be able to carry any types it wants and if the types happens to have a
 `Monoid` instance then so would it. We could try bubbling down the constraint into the methods themselves.
 
@@ -128,7 +147,8 @@ object Demo {
 ```
 
 We also change any functions that have a `Monoid` constraint on the type parameter to take the argument implicitly,
-and any instances of the type class to be implicit.
+and any instances of the type class to be implicit. We show this by re-using the previously defined
+`intAdditionMonoid`, but now declaring it as `implicit`:
 
 ```scala mdoc:silent
 implicit val intAdditionMonoid: Monoid[Int] = new Monoid[Int] {
